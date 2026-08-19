@@ -1,0 +1,120 @@
+package com.motosphere.serviceImpl;
+
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import com.motosphere.dto.request.LoginRequest;
+import com.motosphere.dto.request.RegisterGarageManagerRequest;
+import com.motosphere.dto.request.RegisterRequest;
+import com.motosphere.dto.request.RegisterSuperAdminRequest;
+import com.motosphere.dto.response.ApiResponse;
+import com.motosphere.dto.response.AuthResponse;
+import com.motosphere.entity.Garage;
+import com.motosphere.entity.User;
+import com.motosphere.enums.Role;
+import com.motosphere.exception.BadRequestException;
+import com.motosphere.exception.DuplicateResourceException;
+import com.motosphere.repository.GarageRepository;
+import com.motosphere.repository.UserRepository;
+import com.motosphere.security.CustomUserDetails;
+import com.motosphere.security.JwtUtils;
+import com.motosphere.service.AuthService;
+
+import lombok.RequiredArgsConstructor;
+
+@Service
+@Transactional
+@RequiredArgsConstructor
+public class AuthServiceImpl implements AuthService {
+	private final UserRepository userRepository;
+	private final GarageRepository garageRepository;
+	private final PasswordEncoder passwordEncoder;
+	private final AuthenticationManager authenticationManager;
+	private final JwtUtils jwtUtils;
+
+	@Override
+	public String register(RegisterRequest request) {
+		if (userRepository.existsByEmail(request.getEmail()))
+			throw new DuplicateResourceException("An account with this email already exists");
+
+		// public self-registration always creates a CUSTOMER; staff accounts are
+		// provisioned separately by a SUPER_ADMIN (see UserService#createStaff)
+		User user = new User();
+		user.setFirstName(request.getFirstName());
+		user.setLastName(request.getLastName());
+		user.setEmail(request.getEmail());
+		user.setPassword(passwordEncoder.encode(request.getPassword()));
+		user.setPhoneNumber(request.getPhoneNumber());
+		user.setRole(Role.CUSTOMER);
+		user.setActive(true);
+		userRepository.save(user);
+
+		return "Registration successful!";
+	}
+
+	@Override
+	public String registerSuperAdmin(RegisterSuperAdminRequest request) {
+		// the one-time gate: once a single SUPER_ADMIN exists, this endpoint refuses
+		// every subsequent call, no matter who calls it or what body they send
+		if (userRepository.existsByRole(Role.SUPER_ADMIN))
+			throw new BadRequestException("A super admin account already exists - this endpoint only works once. "
+					+ "Ask an existing SUPER_ADMIN to create further accounts via POST /users/staff.");
+
+		if (userRepository.existsByEmail(request.getEmail()))
+			throw new DuplicateResourceException("An account with this email already exists");
+
+		User user = new User();
+		user.setFirstName(request.getFirstName());
+		user.setLastName(request.getLastName());
+		user.setEmail(request.getEmail());
+		user.setPassword(passwordEncoder.encode(request.getPassword()));
+		user.setRole(Role.SUPER_ADMIN);
+		user.setActive(true);
+		userRepository.save(user);
+
+//		CustomUserDetails userDetails = new CustomUserDetails(user);
+		return "Super admin registered! This endpoint is now permanently locked.";
+	}
+
+	@Override
+	public ApiResponse registerGarageManager(RegisterGarageManagerRequest request) {
+		if (userRepository.existsByEmail(request.getEmail()))
+			throw new DuplicateResourceException("An account with this email already exists");
+
+		// both records start PENDING/inactive - see Garage.approvalStatus and the
+		// active=false below. Neither is usable until a SUPER_ADMIN approves via
+		// PATCH /garages/{garageId}/approve
+		Garage garage = new Garage(request.getGarageName(), request.getOwnerName(), request.getAddress(),
+				request.getGarageContactNumber(), request.getGarageEmail());
+		garageRepository.save(garage);
+
+		User manager = new User();
+		manager.setFirstName(request.getFirstName());
+		manager.setLastName(request.getLastName());
+		manager.setEmail(request.getEmail());
+		manager.setPassword(passwordEncoder.encode(request.getPassword()));
+		manager.setPhoneNumber(request.getPhoneNumber());
+		manager.setRole(Role.GARAGE_MANAGER);
+		manager.setActive(false);
+		manager.setGarage(garage);
+		userRepository.save(manager);
+
+		return new ApiResponse(
+				"Application submitted! Your garage and account will be usable once a super admin approves it.",
+				"Success");
+	}
+
+	@Override
+	public AuthResponse login(LoginRequest request) {
+		Authentication fullyAuthenticated = authenticationManager
+				.authenticate(new UsernamePasswordAuthenticationToken(request.getEmail(), request.getPassword()));
+		CustomUserDetails userDetails = (CustomUserDetails) fullyAuthenticated.getPrincipal();
+		return new AuthResponse("Login successful!", jwtUtils.generateJwt(userDetails),
+				userDetails.getUser().getUserId(), userDetails.getUser().getRole());
+	}
+
+}

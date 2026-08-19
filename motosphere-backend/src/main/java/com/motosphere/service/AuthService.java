@@ -1,0 +1,22 @@
+package com.motosphere.service;
+
+import com.motosphere.dto.request.LoginRequest;
+import com.motosphere.dto.request.RegisterGarageManagerRequest;
+import com.motosphere.dto.request.RegisterRequest;
+import com.motosphere.dto.request.RegisterSuperAdminRequest;
+import com.motosphere.dto.response.ApiResponse;
+import com.motosphere.dto.response.AuthResponse;
+
+public interface AuthService {
+	String register(RegisterRequest request);
+
+	// works exactly once - fails on every call after the first SUPER_ADMIN exists
+	String registerSuperAdmin(RegisterSuperAdminRequest request);
+
+	// creates a PENDING garage + an inactive GARAGE_MANAGER account; neither
+	// works until a SUPER_ADMIN approves via GarageService#approveGarage - so no
+	// JWT is returned here, just a confirmation
+	ApiResponse registerGarageManager(RegisterGarageManagerRequest request);
+
+	AuthResponse login(LoginRequest request);
+}
