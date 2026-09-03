@@ -16,6 +16,7 @@
 	<description>MotoSphere - standalone payment microservice (Razorpay + own database)</description>
 	<properties>
 		<java.version>21</java.version>
+		<spring-cloud.version>2025.0.3</spring-cloud.version>
 	</properties>
 	<dependencies>
 		<dependency>
@@ -31,9 +32,22 @@
 			<artifactId>spring-boot-starter-web</artifactId>
 		</dependency>
 		<dependency>
-			<groupId>org.springframework.boot</groupId>
-			<artifactId>spring-boot-starter-webflux</artifactId>
-			<!-- WebClient only - to call motosphere-backend's /internal API -->
+			<groupId>org.springframework.cloud</groupId>
+			<artifactId>spring-cloud-starter-openfeign</artifactId>
+			<!-- Declarative HTTP client - replaces WebClient for calling
+			     motosphere-backend's /internal API. See client/CoreServiceFeignClient.java -->
+		</dependency>
+		<dependency>
+			<groupId>io.github.openfeign</groupId>
+			<artifactId>feign-okhttp</artifactId>
+			<!-- REQUIRED: Feign's default HTTP client is built on
+			     HttpURLConnection, which cannot send PATCH requests at all
+			     ("Invalid HTTP method: PATCH"). markInvoicePaid() is a PATCH
+			     call, so without this, that call fails on every single
+			     attempt - silently, since CoreServiceClient intentionally
+			     swallows the failure after retrying (see its javadoc).
+			     OkHttp supports PATCH natively; combined with
+			     feign.okhttp.enabled=true below, Feign uses it instead. -->
 		</dependency>
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
@@ -75,6 +89,18 @@
 			<scope>test</scope>
 		</dependency>
 	</dependencies>
+
+	<dependencyManagement>
+		<dependencies>
+			<dependency>
+				<groupId>org.springframework.cloud</groupId>
+				<artifactId>spring-cloud-dependencies</artifactId>
+				<version>${spring-cloud.version}</version>
+				<type>pom</type>
+				<scope>import</scope>
+			</dependency>
+		</dependencies>
+	</dependencyManagement>
 
 	<build>
 		<plugins>

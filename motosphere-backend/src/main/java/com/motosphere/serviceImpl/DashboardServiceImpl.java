@@ -1,10 +1,9 @@
 package com.motosphere.serviceImpl;
 
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.reactive.function.client.WebClient;
 
+import com.motosphere.client.PaymentServiceFeignClient;
 import com.motosphere.dto.response.AdminDashboardResponse;
 import com.motosphere.dto.response.ManagerDashboardResponse;
 import com.motosphere.entity.Garage;
@@ -14,6 +13,7 @@ import com.motosphere.repository.UserRepository;
 import com.motosphere.service.DashboardService;
 import com.motosphere.util.SecurityUtils;
 
+import feign.FeignException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
@@ -23,6 +23,11 @@ import lombok.extern.slf4j.Slf4j;
  * resolves "which garage does the current manager belong to" locally (Garage
  * ownership hasn't moved anywhere), then asks payment-service for that
  * garage's numbers specifically.
+ *
+ * Migrated from WebClient to a declarative Feign client
+ * (PaymentServiceFeignClient) - the calls are now plain blocking method
+ * calls instead of a reactive Mono pipeline, so error handling is a regular
+ * try/catch instead of .onErrorMap(...).
  */
 @Service
 @Transactional(readOnly = true)
@@ -30,16 +35,15 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class DashboardServiceImpl implements DashboardService {
 	private final UserRepository userRepository;
-	private final WebClient paymentServiceWebClient;
-
-	@Value("${internal.api.key}")
-	private String internalApiKey;
+	private final PaymentServiceFeignClient paymentServiceFeignClient;
 
 	@Override
 	public AdminDashboardResponse getAdminDashboard() {
-		return paymentServiceWebClient.get().uri("/internal/payments/admin-summary")
-				.header("X-Internal-Api-Key", internalApiKey).retrieve().bodyToMono(AdminDashboardResponse.class)
-				.onErrorMap(this::wrapDownstreamError).block();
+		try {
+			return paymentServiceFeignClient.getAdminSummary();
+		} catch (FeignException e) {
+			throw wrapDownstreamError(e);
+		}
 	}
 
 	@Override
@@ -52,12 +56,14 @@ public class DashboardServiceImpl implements DashboardService {
 
 		Garage garage = manager.getGarage();
 
-		return paymentServiceWebClient.get().uri("/internal/payments/garage-summary/{garageId}", garage.getGarageId())
-				.header("X-Internal-Api-Key", internalApiKey).retrieve().bodyToMono(ManagerDashboardResponse.class)
-				.onErrorMap(this::wrapDownstreamError).block();
+		try {
+			return paymentServiceFeignClient.getGarageSummary(garage.getGarageId());
+		} catch (FeignException e) {
+			throw wrapDownstreamError(e);
+		}
 	}
 
-	private Throwable wrapDownstreamError(Throwable e) {
+	private BadRequestException wrapDownstreamError(FeignException e) {
 		log.error("payment-service call failed: {}", e.getMessage());
 		return new BadRequestException("Could not load payment data right now - please try again shortly");
 	}

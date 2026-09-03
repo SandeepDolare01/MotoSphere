@@ -11,6 +11,7 @@ import com.motosphere.entity.User;
 
 import lombok.RequiredArgsConstructor;
 
+
 @RequiredArgsConstructor
 public class CustomUserDetails implements UserDetails {
 	private final User user;
