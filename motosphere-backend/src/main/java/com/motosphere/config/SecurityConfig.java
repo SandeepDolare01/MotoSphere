@@ -86,6 +86,7 @@ public class SecurityConfig {
 				.requestMatchers(HttpMethod.GET, "/vehicles/my").hasRole("CUSTOMER")
 
 				// Appointments
+				.requestMatchers(HttpMethod.GET, "/appointments/available-slots").hasRole("CUSTOMER")
 				.requestMatchers(HttpMethod.POST, "/appointments").hasRole("CUSTOMER")
 				.requestMatchers(HttpMethod.GET, "/appointments/my").hasRole("CUSTOMER")
 				.requestMatchers(HttpMethod.PATCH, "/appointments/{appointmentId}/cancel").hasRole("CUSTOMER")

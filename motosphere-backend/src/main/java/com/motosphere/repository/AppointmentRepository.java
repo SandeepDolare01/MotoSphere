@@ -40,4 +40,12 @@ public interface AppointmentRepository extends JpaRepository<Appointment, Long> 
 
 	boolean existsByVehicle_VehicleIdAndAppointmentDateAndAppointmentTimeAndStatusNot(Long vehicleId,
 			LocalDate appointmentDate, LocalTime appointmentTime, AppointmentStatus status);
+
+	// how many active (non-cancelled) appointments already occupy this exact
+	// garage/date/time slot - compared against the garage's active mechanic
+	// count to decide whether the slot still has room. Used both to build the
+	// available-slots list and to re-validate at actual booking time (a
+	// second customer could grab the last spot between the two calls).
+	long countByGarage_GarageIdAndAppointmentDateAndAppointmentTimeAndStatusNot(Long garageId,
+			LocalDate appointmentDate, LocalTime appointmentTime, AppointmentStatus status);
 }

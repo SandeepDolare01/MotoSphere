@@ -1,5 +1,8 @@
 package com.motosphere.serviceImpl;
 
+import java.time.LocalDate;
+import java.time.LocalTime;
+import java.util.ArrayList;
 import java.util.List;
 
 import org.springframework.stereotype.Service;
@@ -9,6 +12,7 @@ import com.motosphere.dto.request.AppointmentRequest;
 import com.motosphere.dto.request.AssignMechanicRequest;
 import com.motosphere.dto.response.ApiResponse;
 import com.motosphere.dto.response.AppointmentResponse;
+import com.motosphere.dto.response.TimeSlotResponse;
 import com.motosphere.entity.Appointment;
 import com.motosphere.entity.Garage;
 import com.motosphere.entity.User;
@@ -51,6 +55,13 @@ public class AppointmentServiceImpl implements AppointmentService {
 		if (garage.getApprovalStatus() != ApprovalStatus.APPROVED)
 			throw new BadRequestException("Invalid garageId!"); // don't leak that a pending/rejected garage exists
 
+		// Re-validate here even though the frontend only ever shows
+		// already-available slots - two customers could be looking at the same
+		// slot list at once, and this is the actual source of truth at the
+		// moment of booking.
+		if (!isSlotFree(garage, request.getAppointmentDate(), request.getAppointmentTime()))
+			throw new BadRequestException("This slot is no longer available - please pick another one");
+
 		boolean slotTaken = appointmentRepository.existsByVehicle_VehicleIdAndAppointmentDateAndAppointmentTimeAndStatusNot(
 				vehicle.getVehicleId(), request.getAppointmentDate(), request.getAppointmentTime(),
 				AppointmentStatus.CANCELLED);
@@ -64,6 +75,48 @@ public class AppointmentServiceImpl implements AppointmentService {
 		appointmentRepository.save(appointment);
 
 		return new ApiResponse("Appointment booked!", "Success");
+	}
+
+	@Override
+	public List<TimeSlotResponse> getAvailableSlots(Long garageId, LocalDate date) {
+		Garage garage = garageRepository.findById(garageId)
+				.orElseThrow(() -> new ResourceNotFoundException("Invalid garageId!"));
+		if (garage.getApprovalStatus() != ApprovalStatus.APPROVED)
+			throw new BadRequestException("Invalid garageId!");
+
+		// fall back to a sensible default for any garage that hasn't had its
+		// hours configured yet, rather than returning zero slots / erroring
+		LocalTime opening = garage.getOpeningTime() != null ? garage.getOpeningTime() : LocalTime.of(9, 0);
+		LocalTime closing = garage.getClosingTime() != null ? garage.getClosingTime() : LocalTime.of(18, 0);
+
+		boolean isToday = date.equals(LocalDate.now());
+
+		List<TimeSlotResponse> slots = new ArrayList<>();
+		LocalTime slotStart = opening;
+		while (!slotStart.plusMinutes(SLOT_MINUTES).isAfter(closing)) {
+			LocalTime slotEnd = slotStart.plusMinutes(SLOT_MINUTES);
+
+			// don't offer a slot that's already in the past for today
+			boolean isPast = isToday && !slotStart.isAfter(LocalTime.now());
+
+			if (!isPast && isSlotFree(garage, date, slotStart))
+				slots.add(new TimeSlotResponse(slotStart, slotEnd));
+
+			slotStart = slotEnd;
+		}
+		return slots;
+	}
+
+	private static final int SLOT_MINUTES = 30;
+
+	// Simple, single-queue model: one 30-min slot = one appointment for the
+	// whole garage, regardless of how many mechanics are on staff. Once a
+	// customer books 9:00-9:30, that window is gone for everyone else and the
+	// next customer's earliest option is 9:30.
+	private boolean isSlotFree(Garage garage, LocalDate date, LocalTime time) {
+		long alreadyBooked = appointmentRepository.countByGarage_GarageIdAndAppointmentDateAndAppointmentTimeAndStatusNot(
+				garage.getGarageId(), date, time, AppointmentStatus.CANCELLED);
+		return alreadyBooked == 0;
 	}
 
 	@Override
