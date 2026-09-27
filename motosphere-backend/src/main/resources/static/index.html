@@ -1,0 +1,1070 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MotoSphere — Garage Operations Console</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --concrete:#EEEEE9;
+    --ink:#1B1F1D;
+    --ink-soft:#2A302C;
+    --steel:#5B6560;
+    --panel:#FFFFFF;
+    --amber:#E8A317;
+    --amber-ink:#5A3D06;
+    --torque:#C4432B;
+    --grease:#3C7A5C;
+    --line:#DADCD5;
+    --line-soft:#E6E7E1;
+    --shadow: 0 1px 2px rgba(27,31,29,.06), 0 4px 14px rgba(27,31,29,.05);
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--concrete);
+    color:var(--ink);
+    font-family:'Inter',system-ui,sans-serif;
+    -webkit-font-smoothing:antialiased;
+    min-height:100vh;
+  }
+  h1,h2,h3,h4{font-family:'Space Grotesk',sans-serif;margin:0;letter-spacing:-.01em;}
+  .mono{font-family:'IBM Plex Mono',monospace;}
+  button{font-family:inherit;cursor:pointer;}
+  input,select,textarea{font-family:inherit;}
+  a{color:inherit;}
+
+  /* ---------- Auth screen ---------- */
+  .auth-wrap{
+    min-height:100vh;display:flex;align-items:center;justify-content:center;
+    padding:32px 16px;
+  }
+  .auth-card{
+    width:100%;max-width:440px;background:var(--panel);border:1px solid var(--line);
+    border-radius:14px;box-shadow:var(--shadow);overflow:hidden;
+  }
+  .auth-head{
+    background:var(--ink);color:var(--concrete);padding:28px 28px 22px;
+  }
+  .auth-head .brand{display:flex;align-items:center;gap:10px;margin-bottom:14px;}
+  .auth-head .brand .dot{width:10px;height:10px;border-radius:2px;background:var(--amber);}
+  .auth-head h1{font-size:22px;color:#fff;}
+  .auth-head p{margin:6px 0 0;font-size:13px;color:#B7BEB9;line-height:1.5;}
+  .auth-tabs{display:flex;border-bottom:1px solid var(--line);}
+  .auth-tab{
+    flex:1;padding:13px 6px;text-align:center;font-size:12.5px;font-weight:600;
+    letter-spacing:.02em;color:var(--steel);background:none;border:none;
+    border-bottom:2px solid transparent;transition:.15s;
+  }
+  .auth-tab.active{color:var(--ink);border-bottom-color:var(--amber);}
+  .auth-body{padding:24px 28px 28px;}
+  .auth-error{
+    background:#FBEAE6;border:1px solid #E9BCAF;color:var(--torque);font-size:12.5px;
+    padding:10px 12px;border-radius:8px;margin-bottom:16px;line-height:1.5;
+  }
+
+  /* ---------- Form elements ---------- */
+  .field{margin-bottom:14px;}
+  .field label{
+    display:block;font-size:11.5px;font-weight:600;text-transform:uppercase;
+    letter-spacing:.06em;color:var(--steel);margin-bottom:6px;
+  }
+  .field input, .field select, .field textarea{
+    width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:8px;
+    background:#fff;font-size:14px;color:var(--ink);transition:.15s;
+  }
+  .field input:focus, .field select:focus, .field textarea:focus{
+    outline:none;border-color:var(--amber);box-shadow:0 0 0 3px rgba(232,163,23,.18);
+  }
+  .field textarea{resize:vertical;min-height:64px;}
+  .field-row{display:flex;gap:12px;}
+  .field-row .field{flex:1;}
+  .hint{font-size:11.5px;color:var(--steel);margin-top:5px;line-height:1.4;}
+
+  .btn{
+    display:inline-flex;align-items:center;justify-content:center;gap:6px;
+    padding:10px 18px;border-radius:8px;border:1px solid transparent;
+    font-size:13.5px;font-weight:600;letter-spacing:.01em;transition:.15s;
+  }
+  .btn-primary{background:var(--ink);color:#fff;}
+  .btn-primary:hover{background:var(--ink-soft);}
+  .btn-amber{background:var(--amber);color:var(--amber-ink);}
+  .btn-amber:hover{filter:brightness(1.05);}
+  .btn-ghost{background:transparent;color:var(--ink);border-color:var(--line);}
+  .btn-ghost:hover{background:var(--line-soft);}
+  .btn-danger{background:#fff;color:var(--torque);border-color:#E9BCAF;}
+  .btn-danger:hover{background:#FBEAE6;}
+  .btn-success{background:#fff;color:var(--grease);border-color:#B9D6C4;}
+  .btn-success:hover{background:#EAF4EE;}
+  .btn-block{width:100%;}
+  .btn-sm{padding:6px 12px;font-size:12.5px;border-radius:6px;}
+  .btn[disabled]{opacity:.5;cursor:not-allowed;}
+
+  /* ---------- Shell ---------- */
+  .shell{display:flex;min-height:100vh;}
+  .rail{
+    width:230px;flex-shrink:0;background:var(--ink);color:#DEE1DC;
+    display:flex;flex-direction:column;padding:22px 0;
+  }
+  .rail-brand{display:flex;align-items:center;gap:9px;padding:0 22px 22px;border-bottom:1px solid #33392F;margin-bottom:14px;}
+  .rail-brand .dot{width:9px;height:9px;border-radius:2px;background:var(--amber);}
+  .rail-brand span{font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:16px;color:#fff;letter-spacing:-.01em;}
+  .rail-section-label{
+    font-size:10.5px;text-transform:uppercase;letter-spacing:.08em;color:#7C857D;
+    padding:4px 22px;margin-top:10px;
+  }
+  .rail-link{
+    display:flex;align-items:center;gap:10px;padding:9px 22px;font-size:13.5px;font-weight:500;
+    color:#C3C9C1;border-left:2px solid transparent;transition:.12s;text-align:left;background:none;border-top:none;border-right:none;border-bottom:none;width:100%;
+  }
+  .rail-link:hover{color:#fff;background:rgba(255,255,255,.04);}
+  .rail-link.active{color:#fff;border-left-color:var(--amber);background:rgba(232,163,23,.09);}
+  .rail-foot{margin-top:auto;padding:14px 22px 0;border-top:1px solid #33392F;}
+  .rail-logout{color:#E7A497;font-size:12.5px;font-weight:600;background:none;border:none;padding:8px 0;}
+
+  .main{flex:1;min-width:0;display:flex;flex-direction:column;}
+  .topbar{
+    display:flex;align-items:center;justify-content:space-between;
+    padding:16px 32px;border-bottom:1px solid var(--line);background:var(--panel);
+  }
+  .role-badge{
+    display:inline-flex;align-items:center;gap:7px;background:var(--ink);color:#fff;
+    padding:5px 11px 5px 9px;border-radius:20px;font-size:11px;font-weight:600;
+    letter-spacing:.04em;text-transform:uppercase;
+  }
+  .role-badge .dot{width:6px;height:6px;border-radius:50%;background:var(--amber);}
+  .who{display:flex;align-items:center;gap:12px;}
+  .who .name{font-size:13.5px;font-weight:600;}
+  .who .sub{font-size:11.5px;color:var(--steel);}
+
+  .content{padding:28px 32px 60px;max-width:1100px;}
+  .section-head{display:flex;align-items:flex-end;justify-content:space-between;margin-bottom:20px;gap:16px;flex-wrap:wrap;}
+  .section-head h2{font-size:21px;}
+  .section-head p{margin:4px 0 0;font-size:13px;color:var(--steel);}
+
+  .card{
+    background:var(--panel);border:1px solid var(--line);border-radius:12px;
+    box-shadow:var(--shadow);padding:20px 22px;margin-bottom:18px;
+  }
+  .card h3{font-size:15px;margin-bottom:14px;}
+  .card + .card{margin-top:0;}
+  .grid-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px;}
+
+  .empty{
+    border:1px dashed var(--line);border-radius:10px;padding:26px 20px;text-align:center;
+    color:var(--steel);font-size:13px;background:#F7F7F3;
+  }
+  .empty strong{display:block;color:var(--ink);font-size:14px;margin-bottom:4px;font-family:'Space Grotesk',sans-serif;}
+
+  table{width:100%;border-collapse:collapse;font-size:13.5px;}
+  th{
+    text-align:left;font-size:10.5px;text-transform:uppercase;letter-spacing:.06em;
+    color:var(--steel);font-weight:600;padding:0 10px 8px;border-bottom:1px solid var(--line);
+  }
+  td{padding:11px 10px;border-bottom:1px solid var(--line-soft);vertical-align:middle;}
+  tr:last-child td{border-bottom:none;}
+  .table-wrap{overflow-x:auto;}
+
+  .stamp{
+    display:inline-block;font-family:'IBM Plex Mono',monospace;font-size:10.5px;font-weight:600;
+    text-transform:uppercase;letter-spacing:.05em;padding:3px 8px;border-radius:4px;
+    border:1px solid transparent;white-space:nowrap;
+  }
+  .stamp-amber{background:#FBF0D9;color:var(--amber-ink);border-color:#EFD695;}
+  .stamp-grease{background:#E4F1E9;color:var(--grease);border-color:#BFDECB;}
+  .stamp-torque{background:#FBEAE6;color:var(--torque);border-color:#E9BCAF;}
+  .stamp-steel{background:#EDEFEC;color:var(--steel);border-color:var(--line);}
+
+  .price{font-family:'IBM Plex Mono',monospace;font-weight:600;}
+
+  .row-actions{display:flex;gap:8px;flex-wrap:wrap;}
+  .divider{height:1px;background:var(--line);margin:16px 0;}
+
+  .toast-wrap{position:fixed;top:18px;right:18px;z-index:999;display:flex;flex-direction:column;gap:8px;}
+  .toast{
+    background:var(--ink);color:#fff;padding:12px 16px;border-radius:8px;font-size:13px;
+    box-shadow:0 8px 24px rgba(0,0,0,.18);max-width:320px;line-height:1.4;
+    animation:slidein .18s ease-out;
+  }
+  .toast.err{background:var(--torque);}
+  .toast.ok{background:var(--grease);}
+  @keyframes slidein{from{transform:translateX(12px);opacity:0;}to{transform:translateX(0);opacity:1;}}
+
+  .subcard{border:1px solid var(--line);border-radius:9px;padding:14px 16px;background:#FBFBF9;margin-top:12px;}
+  .kv{display:flex;justify-content:space-between;font-size:13px;padding:5px 0;border-bottom:1px solid var(--line-soft);}
+  .kv:last-child{border-bottom:none;}
+  .kv .k{color:var(--steel);}
+  .kv .v{font-weight:600;}
+
+  .inline-toggle{font-size:12.5px;font-weight:600;color:var(--amber-ink);background:none;border:none;padding:0;text-decoration:underline;text-underline-offset:2px;}
+
+  @media (max-width: 820px){
+    .shell{flex-direction:column;}
+    .rail{width:100%;flex-direction:row;flex-wrap:wrap;padding:14px;align-items:center;}
+    .rail-brand{border:none;margin:0 14px 0 0;padding:0;}
+    .rail-section-label{display:none;}
+    .rail-link{width:auto;padding:7px 10px;border-left:none;border-radius:6px;}
+    .rail-link.active{border-left:none;background:rgba(232,163,23,.14);}
+    .rail-foot{margin:0 0 0 auto;padding:0;border:none;}
+    .content{padding:20px 16px 50px;}
+    .topbar{padding:14px 16px;}
+    .field-row{flex-direction:column;gap:0;}
+  }
+</style>
+</head>
+<body>
+<div id="app"></div>
+<div class="toast-wrap" id="toastWrap"></div>
+
+<script>
+/* =========================================================================
+   MotoSphere console — single-file vanilla JS SPA served by Spring Boot
+   from src/main/resources/static/, same-origin as the API (no CORS setup
+   needed). Auth state persists in localStorage so a refresh doesn't log
+   you out.
+   ========================================================================= */
+
+const AUTH_KEY = 'ms_auth';
+let state = JSON.parse(localStorage.getItem(AUTH_KEY) || 'null');
+let ui = { section: null, busy: false };
+
+// ---------------------------------------------------------------- api ----
+async function api(path, method = 'GET', body = null) {
+  const headers = { 'Content-Type': 'application/json' };
+  if (state && state.token) headers['Authorization'] = 'Bearer ' + state.token;
+  const res = await fetch(path, { method, headers, body: body ? JSON.stringify(body) : undefined });
+  let data = null;
+  try { data = await res.json(); } catch (e) { /* empty body */ }
+  if (!res.ok) {
+    let msg = (data && data.message) ? data.message : null;
+    if (!msg && data && typeof data === 'object') {
+      const vals = Object.values(data).filter(v => typeof v === 'string');
+      if (vals.length) msg = vals.join(' · ');
+    }
+    throw new Error(msg || ('Request failed (' + res.status + ')'));
+  }
+  return data;
+}
+
+function saveAuth(a) { state = a; localStorage.setItem(AUTH_KEY, JSON.stringify(state)); }
+function clearAuth() { state = null; localStorage.removeItem(AUTH_KEY); }
+
+async function loadProfile() {
+  const profile = await api('/users/' + state.userId);
+  state.profile = profile;
+  localStorage.setItem(AUTH_KEY, JSON.stringify(state));
+}
+
+// -------------------------------------------------------------- toast ----
+function toast(msg, type) {
+  const wrap = document.getElementById('toastWrap');
+  const el = document.createElement('div');
+  el.className = 'toast' + (type === 'err' ? ' err' : type === 'ok' ? ' ok' : '');
+  el.textContent = msg;
+  wrap.appendChild(el);
+  setTimeout(() => el.remove(), 4200);
+}
+
+// ------------------------------------------------------------ helpers ----
+function esc(s) {
+  if (s === null || s === undefined) return '';
+  return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+function money(n) {
+  if (n === null || n === undefined) return '—';
+  return '₹' + Number(n).toFixed(2);
+}
+
+const STATUS_CLASS = {
+  BOOKED:'amber', ASSIGNED:'amber', IN_PROGRESS:'amber', COMPLETED:'grease', CANCELLED:'torque',
+  PENDING:'amber', APPROVED:'grease', REJECTED:'torque', PAID:'grease', FAILED:'torque',
+  ACTIVE:'grease', INACTIVE:'torque', OPEN:'amber'
+};
+function stamp(text) {
+  const cls = STATUS_CLASS[text] || 'steel';
+  return `<span class="stamp stamp-${cls}">${esc(text)}</span>`;
+}
+function roleLabel(r) { return ({SUPER_ADMIN:'Super Admin', GARAGE_MANAGER:'Garage Manager', MECHANIC:'Mechanic', CUSTOMER:'Customer'})[r] || r; }
+
+// =========================================================================
+//  RENDER: root dispatcher
+// =========================================================================
+function render() {
+  const root = document.getElementById('app');
+  root.innerHTML = state ? shellHtml() : authHtml();
+  attachHandlers(root);
+  if (state) loadSectionData();
+}
+
+// =========================================================================
+//  AUTH SCREEN
+// =========================================================================
+let authTab = 'login';
+let authError = '';
+
+function authHtml() {
+  const tabs = [
+    ['login','Sign in'],
+    ['customer','Join as customer'],
+    ['garage','Register a garage'],
+  ];
+  return `
+  <div class="auth-wrap">
+    <div class="auth-card">
+      <div class="auth-head">
+        <div class="brand"><span class="dot"></span><h1>MotoSphere</h1></div>
+        <p>Garage service management — book service, track your job card, run your garage's queue, or approve applications, all from one console.</p>
+      </div>
+      <div class="auth-tabs">
+        ${tabs.map(([id,label]) => `<button class="auth-tab ${authTab===id?'active':''}" data-action="auth-tab" data-tab="${id}">${label}</button>`).join('')}
+      </div>
+      <div class="auth-body">
+        ${authError ? `<div class="auth-error">${esc(authError)}</div>` : ''}
+        ${authTab === 'login' ? loginFormHtml() : authTab === 'customer' ? customerRegisterFormHtml() : garageRegisterFormHtml()}
+      </div>
+    </div>
+  </div>`;
+}
+
+function loginFormHtml() {
+  return `
+  <form data-form="login">
+    <div class="field"><label>Email</label><input name="email" type="email" required placeholder="you@example.com"></div>
+    <div class="field"><label>Password</label><input name="password" type="password" required></div>
+    <button class="btn btn-primary btn-block" type="submit">Sign in</button>
+    <p class="hint">First time setting this up? Use <span class="mono">POST /auth/register-super-admin</span> once, directly against the API, to create the very first admin account.</p>
+  </form>`;
+}
+
+function customerRegisterFormHtml() {
+  return `
+  <form data-form="register-customer">
+    <div class="field-row">
+      <div class="field"><label>First name</label><input name="firstName" required></div>
+      <div class="field"><label>Last name</label><input name="lastName"></div>
+    </div>
+    <div class="field"><label>Email</label><input name="email" type="email" required></div>
+    <div class="field"><label>Phone</label><input name="phoneNumber"></div>
+    <div class="field"><label>Password</label><input name="password" type="password" required>
+      <p class="hint">At least a digit, a lowercase letter, and one of # @ $ *, 5–20 characters.</p>
+    </div>
+    <button class="btn btn-primary btn-block" type="submit">Create account</button>
+  </form>`;
+}
+
+function garageRegisterFormHtml() {
+  return `
+  <form data-form="register-garage">
+    <p class="hint" style="margin:0 0 14px;">Submits your garage as a pending application. A super admin reviews it and sets your commission terms before your account can sign in.</p>
+    <div class="field-row">
+      <div class="field"><label>Your first name</label><input name="firstName" required></div>
+      <div class="field"><label>Your last name</label><input name="lastName"></div>
+    </div>
+    <div class="field"><label>Your email</label><input name="email" type="email" required></div>
+    <div class="field"><label>Your phone</label><input name="phoneNumber"></div>
+    <div class="field"><label>Your password</label><input name="password" type="password" required></div>
+    <div class="divider"></div>
+    <div class="field"><label>Garage name</label><input name="garageName" required></div>
+    <div class="field"><label>Owner name</label><input name="ownerName"></div>
+    <div class="field"><label>Address</label><input name="address"></div>
+    <div class="field-row">
+      <div class="field"><label>Garage contact number</label><input name="garageContactNumber"></div>
+      <div class="field"><label>Garage email</label><input name="garageEmail" type="email"></div>
+    </div>
+    <button class="btn btn-amber btn-block" type="submit">Submit application</button>
+  </form>`;
+}
+
+// =========================================================================
+//  SHELL (logged in)
+// =========================================================================
+function navForRole(role) {
+  if (role === 'CUSTOMER') return [
+    ['vehicles','My vehicles'],
+    ['garages','Browse garages'],
+    ['appointments','My appointments'],
+  ];
+  if (role === 'GARAGE_MANAGER') return [
+    ['garage-appointments','Garage queue'],
+    ['mechanics','My mechanics'],
+  ];
+  if (role === 'MECHANIC') return [
+    ['my-jobs','My appointments'],
+  ];
+  if (role === 'SUPER_ADMIN') return [
+    ['pending-garages','Garage applications'],
+    ['create-garage','Add a garage'],
+    ['create-staff','Add staff'],
+    ['all-users','All users'],
+  ];
+  return [];
+}
+
+function shellHtml() {
+  const role = state.role;
+  const nav = navForRole(role);
+  if (!ui.section) ui.section = nav.length ? nav[0][0] : null;
+  const profile = state.profile;
+  const name = profile ? (profile.firstName + (profile.lastName ? ' ' + profile.lastName : '')) : ('User #' + state.userId);
+  const sub = profile && profile.garageName ? profile.garageName : (role === 'SUPER_ADMIN' ? 'Platform admin' : '');
+
+  return `
+  <div class="shell">
+    <div class="rail">
+      <div class="rail-brand"><span class="dot"></span><span>MotoSphere</span></div>
+      <div class="rail-section-label">Console</div>
+      ${nav.map(([id,label]) => `<button class="rail-link ${ui.section===id?'active':''}" data-action="nav" data-section="${id}">${label}</button>`).join('')}
+      <div class="rail-foot"><button class="rail-logout" data-action="logout">Sign out</button></div>
+    </div>
+    <div class="main">
+      <div class="topbar">
+        <span class="role-badge"><span class="dot"></span>${roleLabel(role)}</span>
+        <div class="who">
+          <div style="text-align:right;">
+            <div class="name">${esc(name)}</div>
+            ${sub ? `<div class="sub">${esc(sub)}</div>` : ''}
+          </div>
+        </div>
+      </div>
+      <div class="content" id="content">${sectionHtml()}</div>
+    </div>
+  </div>`;
+}
+
+// =========================================================================
+//  SECTION DATA CACHE + LOADER
+// =========================================================================
+let cache = {};
+
+async function loadSectionData() {
+  const s = ui.section;
+  try {
+    if (s === 'vehicles') cache.vehicles = await api('/vehicles/my');
+    if (s === 'garages') { cache.garages = await api('/garages'); if (!cache.vehicles) cache.vehicles = await api('/vehicles/my'); }
+    if (s === 'appointments') cache.appointments = await api('/appointments/my');
+    if (s === 'garage-appointments') { cache.garageAppointments = await api('/appointments/garage'); cache.myMechanics = await api('/garages/my/mechanics'); }
+    if (s === 'mechanics') cache.myMechanics = await api('/garages/my/mechanics');
+    if (s === 'my-jobs') cache.myJobs = await api('/appointments/mechanic');
+    if (s === 'pending-garages') cache.pendingGarages = await api('/garages/pending');
+    if (s === 'all-users') cache.allUsers = await api('/users');
+  } catch (e) {
+    toast(e.message, 'err');
+  }
+  refreshContent();
+}
+
+function refreshContent() {
+  const el = document.getElementById('content');
+  if (el) { el.innerHTML = sectionHtml(); attachHandlers(el); }
+}
+
+function sectionHtml() {
+  switch (ui.section) {
+    case 'vehicles': return vehiclesSection();
+    case 'garages': return garagesSection();
+    case 'appointments': return appointmentsSection();
+    case 'garage-appointments': return garageAppointmentsSection();
+    case 'mechanics': return mechanicsSection();
+    case 'my-jobs': return myJobsSection();
+    case 'pending-garages': return pendingGaragesSection();
+    case 'create-garage': return createGarageSection();
+    case 'create-staff': return createStaffSection();
+    case 'all-users': return allUsersSection();
+    default: return '<div class="empty">Nothing here yet.</div>';
+  }
+}
+
+// =========================================================================
+//  CUSTOMER — vehicles
+// =========================================================================
+function vehiclesSection() {
+  const list = cache.vehicles || [];
+  return `
+  <div class="section-head">
+    <div><h2>My vehicles</h2><p>Register a vehicle before booking a service appointment for it.</p></div>
+  </div>
+  <div class="card">
+    <h3>Add a vehicle</h3>
+    <form data-form="add-vehicle">
+      <div class="field-row">
+        <div class="field"><label>Registration number</label><input name="registrationNumber" required placeholder="KA01AB1234"></div>
+        <div class="field"><label>Type</label><select name="vehicleType" required>
+          <option value="CAR">Car</option><option value="BIKE">Bike</option><option value="TRUCK">Truck</option>
+        </select></div>
+      </div>
+      <div class="field-row">
+        <div class="field"><label>Manufacturer</label><input name="manufacturer" required></div>
+        <div class="field"><label>Model</label><input name="model"></div>
+      </div>
+      <div class="field-row">
+        <div class="field"><label>Manufacturing year</label><input name="manufacturingYear" type="number" min="1980" max="2100"></div>
+        <div class="field"><label>Fuel type</label><select name="fuelType"><option value="">—</option><option value="PETROL">Petrol</option><option value="DIESEL">Diesel</option></select></div>
+      </div>
+      <button class="btn btn-amber" type="submit">Add vehicle</button>
+    </form>
+  </div>
+  ${list.length === 0 ? `<div class="empty"><strong>No vehicles yet</strong>Add one above to start booking service appointments.</div>` : `
+  <div class="card"><div class="table-wrap"><table>
+    <tr><th>Registration</th><th>Vehicle</th><th>Year</th><th>Type</th><th>Fuel</th></tr>
+    ${list.map(v => `<tr>
+      <td class="mono">${esc(v.registrationNumber)}</td>
+      <td>${esc(v.manufacturer)} ${esc(v.model||'')}</td>
+      <td>${esc(v.manufacturingYear||'—')}</td>
+      <td>${esc(v.vehicleType)}</td>
+      <td>${esc(v.fuelType||'—')}</td>
+    </tr>`).join('')}
+  </table></div></div>`}`;
+}
+
+// =========================================================================
+//  CUSTOMER — browse garages + book
+// =========================================================================
+let bookingGarageId = null;
+
+function garagesSection() {
+  const list = cache.garages || [];
+  const vehicles = cache.vehicles || [];
+  return `
+  <div class="section-head"><div><h2>Browse garages</h2><p>Approved garages open for booking.</p></div></div>
+  ${list.length === 0 ? `<div class="empty"><strong>No garages listed yet</strong>Check back soon.</div>` : `
+  <div class="grid-cards">
+    ${list.map(g => `
+    <div class="card">
+      <h3>${esc(g.garageName)}</h3>
+      <div class="kv"><span class="k">Owner</span><span class="v">${esc(g.ownerName||'—')}</span></div>
+      <div class="kv"><span class="k">Address</span><span class="v">${esc(g.address||'—')}</span></div>
+      <div class="kv"><span class="k">Hours</span><span class="v">${esc(g.openingTime||'—')} – ${esc(g.closingTime||'—')}</span></div>
+      <div class="kv"><span class="k">Contact</span><span class="v">${esc(g.contactNumber||'—')}</span></div>
+      <div class="divider"></div>
+      ${bookingGarageId === g.garageId ? bookingFormHtml(g.garageId, vehicles) :
+        `<button class="btn btn-amber btn-block" data-action="start-book" data-id="${g.garageId}">Book appointment</button>`}
+    </div>`).join('')}
+  </div>`}`;
+}
+
+function bookingFormHtml(garageId, vehicles) {
+  if (vehicles.length === 0) return `<div class="empty">Add a vehicle under "My vehicles" first.</div>`;
+  return `
+  <form data-form="book-appointment" data-garage-id="${garageId}">
+    <div class="field"><label>Vehicle</label><select name="vehicleId" required>
+      ${vehicles.map(v => `<option value="${v.vehicleId}">${esc(v.registrationNumber)} — ${esc(v.manufacturer)}</option>`).join('')}
+    </select></div>
+    <div class="field-row">
+      <div class="field"><label>Date</label><input name="appointmentDate" type="date" required></div>
+      <div class="field"><label>Time</label><input name="appointmentTime" type="time" required></div>
+    </div>
+    <div class="field"><label>What's wrong?</label><textarea name="issueDescription" placeholder="Describe the issue..."></textarea></div>
+    <div class="row-actions">
+      <button class="btn btn-amber" type="submit">Confirm booking</button>
+      <button class="btn btn-ghost" type="button" data-action="cancel-book">Cancel</button>
+    </div>
+  </form>`;
+}
+
+// =========================================================================
+//  CUSTOMER — my appointments (+ job card / invoice / pay)
+// =========================================================================
+let openAppointmentId = null;
+let jobCardCache = {};
+let invoiceCache = {};
+
+function appointmentsSection() {
+  const list = cache.appointments || [];
+  return `
+  <div class="section-head"><div><h2>My appointments</h2><p>Track a booking from drop-off to payment.</p></div></div>
+  ${list.length === 0 ? `<div class="empty"><strong>No appointments yet</strong>Browse garages to book your first service.</div>` :
+  list.map(a => appointmentCardHtml(a, 'customer')).join('')}`;
+}
+
+function appointmentCardHtml(a, viewer) {
+  const open = openAppointmentId === a.appointmentId;
+  return `
+  <div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap;">
+      <div>
+        <h3 style="margin-bottom:4px;">${esc(a.vehicleRegistrationNumber)} · ${esc(a.garageName)}</h3>
+        <div class="hint" style="margin-top:0;">${esc(a.appointmentDate)} at ${esc(a.appointmentTime)}${a.mechanicName ? ' · Mechanic: ' + esc(a.mechanicName) : ''}</div>
+      </div>
+      ${stamp(a.status)}
+    </div>
+    ${a.issueDescription ? `<p style="font-size:13px;color:var(--steel);margin:10px 0 0;">${esc(a.issueDescription)}</p>` : ''}
+    <div class="row-actions" style="margin-top:14px;">
+      ${(a.status === 'BOOKED' || a.status === 'ASSIGNED') && viewer === 'customer' ?
+        `<button class="btn btn-danger btn-sm" data-action="cancel-appt" data-id="${a.appointmentId}">Cancel booking</button>` : ''}
+      ${a.status === 'IN_PROGRESS' || a.status === 'COMPLETED' ?
+        `<button class="btn btn-ghost btn-sm" data-action="toggle-jobcard" data-id="${a.appointmentId}">${open ? 'Hide job card' : 'View job card'}</button>` : ''}
+    </div>
+    ${open ? `<div id="jc-${a.appointmentId}">${jobCardDetailHtml(a)}</div>` : ''}
+  </div>`;
+}
+
+function jobCardDetailHtml(a) {
+  const jc = jobCardCache[a.appointmentId];
+  if (jc === undefined) return `<div class="subcard">Loading…</div>`;
+  if (jc === null) return `<div class="subcard">No job card yet — the garage hasn't started work.</div>`;
+  const itemsTotal = (jc.items||[]).reduce((s,i)=>s + Number(i.amount), 0);
+  let invoiceHtml = '';
+  if (a.status === 'COMPLETED') {
+    const inv = invoiceCache[jc.jobCardId];
+    if (inv === undefined) invoiceHtml = `<div class="subcard">Loading invoice…</div>`;
+    else if (inv === null) invoiceHtml = `<div class="subcard">Invoice not available yet.</div>`;
+    else invoiceHtml = invoiceBlockHtml(inv);
+  }
+  return `
+  <div class="subcard">
+    <div class="kv"><span class="k">Diagnosis</span><span class="v">${esc(jc.diagnosis||'—')}</span></div>
+    <div class="kv"><span class="k">Remarks</span><span class="v">${esc(jc.remarks||'—')}</span></div>
+    <div class="kv"><span class="k">Labour charge</span><span class="v price">${money(jc.labourCharge)}</span></div>
+    ${(jc.items||[]).length ? `
+    <div class="divider"></div>
+    <table><tr><th>Item</th><th>Type</th><th>Qty</th><th>Unit</th><th>Amount</th></tr>
+    ${jc.items.map(i=>`<tr><td>${esc(i.description)}</td><td>${esc(i.itemType)}</td><td>${esc(i.quantity)}</td><td class="price">${money(i.unitPrice)}</td><td class="price">${money(i.amount)}</td></tr>`).join('')}
+    </table>` : '<p class="hint">No parts/services logged yet.</p>'}
+  </div>
+  ${invoiceHtml}`;
+}
+
+function invoiceBlockHtml(inv) {
+  const paid = inv.paymentStatus === 'PAID';
+  return `
+  <div class="subcard">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+      <strong class="mono" style="font-size:12.5px;">${esc(inv.invoiceNumber)}</strong>${stamp(inv.paymentStatus)}
+    </div>
+    <div class="kv"><span class="k">Subtotal</span><span class="v price">${money(inv.subtotal)}</span></div>
+    <div class="kv"><span class="k">GST (${inv.gstPercentage}%)</span><span class="v price">${money(inv.gstAmount)}</span></div>
+    <div class="kv"><span class="k">Total</span><span class="v price">${money(inv.totalAmount)}</span></div>
+    ${!paid ? `
+    <div class="divider"></div>
+    <form data-form="pay-invoice" data-invoice-id="${inv.invoiceId}">
+      <div class="field-row">
+        <div class="field"><label>Payment method</label><select name="paymentMethod" data-action="payment-method-change">
+          <option value="ONLINE">Online</option><option value="CASH">Cash</option>
+        </select></div>
+        <div class="field" data-txn-field><label>Transaction ID</label><input name="transactionId" placeholder="txn_..."></div>
+      </div>
+      <button class="btn btn-amber" type="submit">Pay ${money(inv.totalAmount)}</button>
+    </form>` : ''}
+  </div>`;
+}
+
+// =========================================================================
+//  GARAGE_MANAGER — garage queue
+// =========================================================================
+function garageAppointmentsSection() {
+  const list = cache.garageAppointments || [];
+  const mechs = (cache.myMechanics || []).filter(m => m.active);
+  return `
+  <div class="section-head"><div><h2>Garage queue</h2><p>Every appointment booked at your garage.</p></div></div>
+  ${list.length === 0 ? `<div class="empty"><strong>No appointments yet</strong>They'll show up here once customers start booking.</div>` :
+  list.map(a => `
+  <div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap;">
+      <div>
+        <h3 style="margin-bottom:4px;">${esc(a.vehicleRegistrationNumber)}</h3>
+        <div class="hint" style="margin-top:0;">${esc(a.appointmentDate)} at ${esc(a.appointmentTime)}${a.mechanicName ? ' · ' + esc(a.mechanicName) : ''}</div>
+      </div>
+      ${stamp(a.status)}
+    </div>
+    ${a.issueDescription ? `<p style="font-size:13px;color:var(--steel);margin:10px 0 0;">${esc(a.issueDescription)}</p>` : ''}
+    ${a.status === 'BOOKED' ? `
+    <div class="subcard">
+      ${mechs.length === 0 ? `<span class="hint">No active mechanics to assign — add one under "My mechanics".</span>` : `
+      <form data-form="assign-mechanic" data-appointment-id="${a.appointmentId}" style="display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap;">
+        <div class="field" style="flex:1;min-width:180px;margin-bottom:0;"><label>Assign mechanic</label>
+          <select name="mechanicId">${mechs.map(m=>`<option value="${m.userId}">${esc(m.firstName)} ${esc(m.lastName||'')}</option>`).join('')}</select>
+        </div>
+        <button class="btn btn-amber" type="submit">Assign</button>
+      </form>`}
+    </div>` : ''}
+  </div>`).join('')}`;
+}
+
+// =========================================================================
+//  GARAGE_MANAGER — mechanics
+// =========================================================================
+function mechanicsSection() {
+  const list = cache.myMechanics || [];
+  return `
+  <div class="section-head"><div><h2>My mechanics</h2><p>Add or remove mechanics at your garage.</p></div></div>
+  <div class="card">
+    <h3>Add a mechanic</h3>
+    <form data-form="add-mechanic">
+      <div class="field-row">
+        <div class="field"><label>First name</label><input name="firstName" required></div>
+        <div class="field"><label>Last name</label><input name="lastName"></div>
+      </div>
+      <div class="field-row">
+        <div class="field"><label>Email</label><input name="email" type="email" required></div>
+        <div class="field"><label>Phone</label><input name="phoneNumber"></div>
+      </div>
+      <div class="field"><label>Password</label><input name="password" type="password" required></div>
+      <div class="field-row">
+        <div class="field"><label>Specialization</label><input name="specialization" placeholder="Engine repair"></div>
+        <div class="field"><label>Experience (years)</label><input name="experienceYears" type="number" min="0"></div>
+      </div>
+      <button class="btn btn-amber" type="submit">Add mechanic</button>
+    </form>
+  </div>
+  ${list.length === 0 ? `<div class="empty"><strong>No mechanics yet</strong>Add your first one above.</div>` : `
+  <div class="card"><div class="table-wrap"><table>
+    <tr><th>Name</th><th>Email</th><th>Specialization</th><th>Experience</th><th>Status</th><th></th></tr>
+    ${list.map(m => `<tr>
+      <td>${esc(m.firstName)} ${esc(m.lastName||'')}</td>
+      <td>${esc(m.email)}</td>
+      <td>${esc(m.specialization||'—')}</td>
+      <td>${m.experienceYears!=null?m.experienceYears+' yrs':'—'}</td>
+      <td>${stamp(m.active?'ACTIVE':'INACTIVE')}</td>
+      <td>${m.active
+        ? `<button class="btn btn-danger btn-sm" data-action="deactivate-mech" data-id="${m.userId}">Deactivate</button>`
+        : `<button class="btn btn-success btn-sm" data-action="reactivate-mech" data-id="${m.userId}">Reactivate</button>`}</td>
+    </tr>`).join('')}
+  </table></div></div>`}`;
+}
+
+// =========================================================================
+//  MECHANIC — my jobs
+// =========================================================================
+function myJobsSection() {
+  const list = cache.myJobs || [];
+  return `
+  <div class="section-head"><div><h2>My appointments</h2><p>Appointments assigned to you.</p></div></div>
+  ${list.length === 0 ? `<div class="empty"><strong>Nothing assigned yet</strong>Your garage manager assigns appointments to you.</div>` :
+  list.map(a => mechanicJobCardHtml(a)).join('')}`;
+}
+
+function mechanicJobCardHtml(a) {
+  const showWork = a.status === 'ASSIGNED' || a.status === 'IN_PROGRESS';
+  const open = openAppointmentId === a.appointmentId;
+  return `
+  <div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap;">
+      <div>
+        <h3 style="margin-bottom:4px;">${esc(a.vehicleRegistrationNumber)}</h3>
+        <div class="hint" style="margin-top:0;">${esc(a.appointmentDate)} at ${esc(a.appointmentTime)}</div>
+      </div>
+      ${stamp(a.status)}
+    </div>
+    ${a.issueDescription ? `<p style="font-size:13px;color:var(--steel);margin:10px 0 0;">${esc(a.issueDescription)}</p>` : ''}
+    ${a.status === 'ASSIGNED' ? `
+    <div class="subcard">
+      <strong style="font-size:13px;">Create job card</strong>
+      <form data-form="create-jobcard" data-appointment-id="${a.appointmentId}" style="margin-top:10px;">
+        <div class="field"><label>Diagnosis</label><textarea name="diagnosis" placeholder="What's the issue?"></textarea></div>
+        <div class="field"><label>Remarks</label><textarea name="remarks"></textarea></div>
+        <div class="field"><label>Labour charge</label><input name="labourCharge" type="number" step="0.01" min="0" placeholder="0.00"></div>
+        <button class="btn btn-amber" type="submit">Create job card</button>
+      </form>
+    </div>` : ''}
+    ${a.status === 'IN_PROGRESS' ? `
+      <div class="row-actions" style="margin-top:14px;">
+        <button class="btn btn-ghost btn-sm" data-action="toggle-jobcard" data-id="${a.appointmentId}">${open?'Hide job card':'Open job card'}</button>
+      </div>
+      ${open ? `<div id="jc-${a.appointmentId}">${mechanicJobCardWorkHtml(a)}</div>` : ''}
+    ` : ''}
+  </div>`;
+}
+
+function mechanicJobCardWorkHtml(a) {
+  const jc = jobCardCache[a.appointmentId];
+  if (jc === undefined) return `<div class="subcard">Loading…</div>`;
+  if (jc === null) return `<div class="subcard">Job card not found.</div>`;
+  return `
+  <div class="subcard">
+    <div class="kv"><span class="k">Diagnosis</span><span class="v">${esc(jc.diagnosis||'—')}</span></div>
+    <div class="kv"><span class="k">Remarks</span><span class="v">${esc(jc.remarks||'—')}</span></div>
+    <div class="kv"><span class="k">Labour charge</span><span class="v price">${money(jc.labourCharge)}</span></div>
+    ${(jc.items||[]).length ? `
+    <table style="margin-top:10px;"><tr><th>Item</th><th>Type</th><th>Qty</th><th>Unit</th><th>Amount</th></tr>
+    ${jc.items.map(i=>`<tr><td>${esc(i.description)}</td><td>${esc(i.itemType)}</td><td>${esc(i.quantity)}</td><td class="price">${money(i.unitPrice)}</td><td class="price">${money(i.amount)}</td></tr>`).join('')}
+    </table>` : ''}
+    <div class="divider"></div>
+    <strong style="font-size:12.5px;">Add item</strong>
+    <form data-form="add-item" data-jobcard-id="${jc.jobCardId}" data-appointment-id="${a.appointmentId}" style="margin-top:8px;">
+      <div class="field-row">
+        <div class="field"><label>Description</label><input name="description" required></div>
+        <div class="field"><label>Type</label><select name="itemType"><option value="SERVICE">Service</option><option value="PART">Part</option></select></div>
+      </div>
+      <div class="field-row">
+        <div class="field"><label>Quantity</label><input name="quantity" type="number" min="1" value="1" required></div>
+        <div class="field"><label>Unit price</label><input name="unitPrice" type="number" step="0.01" min="0" required></div>
+      </div>
+      <button class="btn btn-ghost" type="submit">Add item</button>
+    </form>
+    <div class="divider"></div>
+    <button class="btn btn-success" data-action="complete-jobcard" data-id="${jc.jobCardId}" data-appointment-id="${a.appointmentId}">Mark job complete</button>
+  </div>`;
+}
+
+// =========================================================================
+//  SUPER_ADMIN — pending garages
+// =========================================================================
+function pendingGaragesSection() {
+  const list = cache.pendingGarages || [];
+  return `
+  <div class="section-head"><div><h2>Garage applications</h2><p>Approve to set commission terms and activate the manager's account, or reject.</p></div></div>
+  ${list.length === 0 ? `<div class="empty"><strong>No pending applications</strong>You're all caught up.</div>` :
+  list.map(g => `
+  <div class="card">
+    <h3>${esc(g.garageName)}</h3>
+    <div class="kv"><span class="k">Owner</span><span class="v">${esc(g.ownerName||'—')}</span></div>
+    <div class="kv"><span class="k">Address</span><span class="v">${esc(g.address||'—')}</span></div>
+    <div class="kv"><span class="k">Applicant</span><span class="v">${esc(g.applicantManagerName||'—')} · ${esc(g.applicantManagerEmail||'—')}</span></div>
+    <div class="divider"></div>
+    <form data-form="approve-garage" data-id="${g.garageId}" style="display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap;">
+      <div class="field" style="margin-bottom:0;min-width:160px;"><label>Commission %</label><input name="commissionPercentage" type="number" step="0.1" min="0" max="100" required placeholder="10.0"></div>
+      <button class="btn btn-success" type="submit">Approve</button>
+      <button class="btn btn-danger" type="button" data-action="reject-garage" data-id="${g.garageId}">Reject</button>
+    </form>
+  </div>`).join('')}`;
+}
+
+// =========================================================================
+//  SUPER_ADMIN — create garage directly
+// =========================================================================
+function createGarageSection() {
+  return `
+  <div class="section-head"><div><h2>Add a garage</h2><p>Created directly by you — starts approved immediately, no review needed.</p></div></div>
+  <div class="card">
+    <form data-form="create-garage">
+      <div class="field"><label>Garage name</label><input name="garageName" required></div>
+      <div class="field-row">
+        <div class="field"><label>Owner name</label><input name="ownerName"></div>
+        <div class="field"><label>Contact number</label><input name="contactNumber"></div>
+      </div>
+      <div class="field"><label>Address</label><input name="address"></div>
+      <div class="field"><label>Email</label><input name="email" type="email"></div>
+      <div class="field-row">
+        <div class="field"><label>Opening time</label><input name="openingTime" type="time"></div>
+        <div class="field"><label>Closing time</label><input name="closingTime" type="time"></div>
+      </div>
+      <div class="field"><label>Commission %</label><input name="commissionPercentage" type="number" step="0.1" min="0" max="100" required></div>
+      <button class="btn btn-amber" type="submit">Create garage</button>
+    </form>
+  </div>`;
+}
+
+// =========================================================================
+//  SUPER_ADMIN — create staff
+// =========================================================================
+function createStaffSection() {
+  return `
+  <div class="section-head"><div><h2>Add staff</h2><p>Provision a garage manager or mechanic directly, at any garage, by its ID.</p></div></div>
+  <div class="card">
+    <form data-form="create-staff">
+      <div class="field-row">
+        <div class="field"><label>First name</label><input name="firstName" required></div>
+        <div class="field"><label>Last name</label><input name="lastName"></div>
+      </div>
+      <div class="field-row">
+        <div class="field"><label>Email</label><input name="email" type="email" required></div>
+        <div class="field"><label>Phone</label><input name="phoneNumber"></div>
+      </div>
+      <div class="field"><label>Password</label><input name="password" type="password" required></div>
+      <div class="field-row">
+        <div class="field"><label>Role</label><select name="role" data-action="staff-role-change">
+          <option value="GARAGE_MANAGER">Garage manager</option><option value="MECHANIC">Mechanic</option>
+        </select></div>
+        <div class="field"><label>Garage ID</label><input name="garageId" type="number" required></div>
+      </div>
+      <div class="field-row" data-mechanic-fields style="display:none;">
+        <div class="field"><label>Specialization</label><input name="specialization"></div>
+        <div class="field"><label>Experience (years)</label><input name="experienceYears" type="number" min="0"></div>
+      </div>
+      <button class="btn btn-amber" type="submit">Create account</button>
+    </form>
+  </div>`;
+}
+
+// =========================================================================
+//  SUPER_ADMIN — all users
+// =========================================================================
+function allUsersSection() {
+  const list = cache.allUsers || [];
+  return `
+  <div class="section-head"><div><h2>All users</h2><p>Every account on the platform.</p></div></div>
+  <div class="card"><div class="table-wrap"><table>
+    <tr><th>Name</th><th>Email</th><th>Role</th><th>Garage</th><th>Status</th><th></th></tr>
+    ${list.map(u => `<tr>
+      <td>${esc(u.firstName)} ${esc(u.lastName||'')}</td>
+      <td>${esc(u.email)}</td>
+      <td>${roleLabel(u.role)}</td>
+      <td>${esc(u.garageName||'—')}</td>
+      <td>${stamp(u.active?'ACTIVE':'INACTIVE')}</td>
+      <td>${u.userId === state.userId ? '' : (u.active
+        ? `<button class="btn btn-danger btn-sm" data-action="deactivate-user" data-id="${u.userId}">Deactivate</button>`
+        : `<button class="btn btn-success btn-sm" data-action="reactivate-user" data-id="${u.userId}">Reactivate</button>`)}</td>
+    </tr>`).join('')}
+  </table></div></div>`;
+}
+
+// =========================================================================
+//  EVENT HANDLING (delegated)
+// =========================================================================
+function attachHandlers(root) {
+  root.onclick = async (e) => {
+    const btn = e.target.closest('[data-action]');
+    if (!btn) return;
+    const action = btn.dataset.action;
+
+    try {
+      if (action === 'auth-tab') { authTab = btn.dataset.tab; authError=''; render(); }
+      else if (action === 'logout') { clearAuth(); ui.section=null; cache={}; render(); }
+      else if (action === 'nav') { ui.section = btn.dataset.section; openAppointmentId=null; jobCardCache={}; invoiceCache={}; document.getElementById('content').innerHTML = '<div class="empty">Loading…</div>'; await loadSectionData(); }
+      else if (action === 'start-book') { bookingGarageId = Number(btn.dataset.id); refreshContent(); }
+      else if (action === 'cancel-book') { bookingGarageId = null; refreshContent(); }
+      else if (action === 'cancel-appt') {
+        await api('/appointments/' + btn.dataset.id + '/cancel', 'PATCH');
+        toast('Appointment cancelled', 'ok'); cache.appointments = await api('/appointments/my'); refreshContent();
+      }
+      else if (action === 'toggle-jobcard') {
+        const id = Number(btn.dataset.id);
+        if (openAppointmentId === id) { openAppointmentId = null; refreshContent(); return; }
+        openAppointmentId = id; jobCardCache[id] = undefined; refreshContent();
+        try {
+          const jc = await api('/jobcards/appointment/' + id);
+          jobCardCache[id] = jc;
+          if (state.role === 'CUSTOMER') {
+            try { invoiceCache[jc.jobCardId] = await api('/invoices/jobcard/' + jc.jobCardId); }
+            catch (e2) { invoiceCache[jc.jobCardId] = null; }
+          }
+        } catch (e2) { jobCardCache[id] = null; }
+        refreshContent();
+      }
+      else if (action === 'deactivate-mech') { await api('/garages/my/mechanics/'+btn.dataset.id+'/deactivate','PATCH'); toast('Mechanic deactivated','ok'); cache.myMechanics = await api('/garages/my/mechanics'); refreshContent(); }
+      else if (action === 'reactivate-mech') { await api('/garages/my/mechanics/'+btn.dataset.id+'/reactivate','PATCH'); toast('Mechanic reactivated','ok'); cache.myMechanics = await api('/garages/my/mechanics'); refreshContent(); }
+      else if (action === 'deactivate-user') { await api('/users/'+btn.dataset.id+'/deactivate','PATCH'); toast('User deactivated','ok'); cache.allUsers = await api('/users'); refreshContent(); }
+      else if (action === 'reactivate-user') { await api('/users/'+btn.dataset.id+'/reactivate','PATCH'); toast('User reactivated','ok'); cache.allUsers = await api('/users'); refreshContent(); }
+      else if (action === 'reject-garage') {
+        const reason = prompt('Reason for rejection (optional):') || '';
+        await api('/garages/'+btn.dataset.id+'/reject','PATCH',{reason});
+        toast('Application rejected','ok'); cache.pendingGarages = await api('/garages/pending'); refreshContent();
+      }
+      else if (action === 'complete-jobcard') {
+        await api('/jobcards/'+btn.dataset.id+'/complete','PATCH');
+        toast('Job marked complete — invoice generated','ok');
+        openAppointmentId = null;
+        cache.myJobs = await api('/appointments/mechanic'); refreshContent();
+      }
+      else if (action === 'payment-method-change') { /* handled on change, not click */ }
+    } catch (err) { toast(err.message, 'err'); }
+  };
+
+  root.onchange = (e) => {
+    if (e.target.name === 'paymentMethod') {
+      const form = e.target.closest('form');
+      const field = form.querySelector('[data-txn-field]');
+      field.style.display = e.target.value === 'ONLINE' ? '' : 'none';
+    }
+    if (e.target.name === 'role' && e.target.dataset.action === 'staff-role-change') {
+      const form = e.target.closest('form');
+      const mf = form.querySelector('[data-mechanic-fields]');
+      mf.style.display = e.target.value === 'MECHANIC' ? '' : 'none';
+    }
+  };
+
+  root.onsubmit = async (e) => {
+    e.preventDefault();
+    const form = e.target;
+    const kind = form.dataset.form;
+    const fd = new FormData(form);
+    const body = {};
+    fd.forEach((v,k) => { body[k] = v === '' ? null : v; });
+
+    try {
+      if (kind === 'login') {
+        const resp = await api('/auth/login','POST',body);
+        saveAuth({ token: resp.token, userId: resp.userId, role: resp.role });
+        await loadProfile();
+        ui.section = null; cache = {};
+        toast('Welcome back', 'ok'); render();
+      }
+      else if (kind === 'register-customer') {
+        await api('/auth/register','POST',body);
+        toast('Account created — sign in below', 'ok'); authTab='login'; authError=''; render();
+      }
+      else if (kind === 'register-garage') {
+        await api('/auth/register-garage-manager','POST',body);
+        toast('Application submitted — wait for approval, then sign in', 'ok'); authTab='login'; authError=''; render();
+      }
+      else if (kind === 'add-vehicle') {
+        if (body.manufacturingYear) body.manufacturingYear = Number(body.manufacturingYear);
+        await api('/vehicles','POST',body);
+        toast('Vehicle added','ok'); cache.vehicles = await api('/vehicles/my'); refreshContent();
+      }
+      else if (kind === 'book-appointment') {
+        body.vehicleId = Number(body.vehicleId);
+        body.garageId = Number(form.dataset.garageId);
+        await api('/appointments','POST',body);
+        toast('Appointment booked','ok'); bookingGarageId = null;
+        cache.garages = await api('/garages'); refreshContent();
+      }
+      else if (kind === 'pay-invoice') {
+        const invoiceId = form.dataset.invoiceId;
+        await api('/payments/invoice/'+invoiceId,'POST',body);
+        toast('Payment successful','ok');
+        cache.appointments = await api('/appointments/my');
+        for (const k of Object.keys(jobCardCache)) { if (jobCardCache[k]) { try { invoiceCache[jobCardCache[k].jobCardId] = await api('/invoices/jobcard/'+jobCardCache[k].jobCardId); } catch(e){} } }
+        refreshContent();
+      }
+      else if (kind === 'assign-mechanic') {
+        body.mechanicId = Number(body.mechanicId);
+        await api('/appointments/'+form.dataset.appointmentId+'/assign-mechanic','PATCH',body);
+        toast('Mechanic assigned','ok');
+        cache.garageAppointments = await api('/appointments/garage'); refreshContent();
+      }
+      else if (kind === 'add-mechanic') {
+        if (body.experienceYears) body.experienceYears = Number(body.experienceYears);
+        await api('/garages/my/mechanics','POST',body);
+        toast('Mechanic added','ok'); cache.myMechanics = await api('/garages/my/mechanics'); refreshContent();
+      }
+      else if (kind === 'create-jobcard') {
+        body.labourCharge = body.labourCharge ? Number(body.labourCharge) : 0;
+        await api('/jobcards/appointment/'+form.dataset.appointmentId,'POST',body);
+        toast('Job card created','ok'); cache.myJobs = await api('/appointments/mechanic'); refreshContent();
+      }
+      else if (kind === 'add-item') {
+        body.quantity = Number(body.quantity); body.unitPrice = Number(body.unitPrice);
+        await api('/jobcards/'+form.dataset.jobcardId+'/items','POST',body);
+        toast('Item added','ok');
+        const apptId = Number(form.dataset.appointmentId);
+        jobCardCache[apptId] = await api('/jobcards/appointment/'+apptId);
+        refreshContent();
+      }
+      else if (kind === 'approve-garage') {
+        body.commissionPercentage = Number(body.commissionPercentage);
+        await api('/garages/'+form.dataset.id+'/approve','PATCH',body);
+        toast('Garage approved','ok'); cache.pendingGarages = await api('/garages/pending'); refreshContent();
+      }
+      else if (kind === 'create-garage') {
+        body.commissionPercentage = Number(body.commissionPercentage);
+        await api('/garages','POST',body);
+        toast('Garage created','ok'); form.reset();
+      }
+      else if (kind === 'create-staff') {
+        body.garageId = Number(body.garageId);
+        if (body.experienceYears) body.experienceYears = Number(body.experienceYears);
+        await api('/users/staff','POST',body);
+        toast('Staff account created','ok'); form.reset();
+      }
+    } catch (err) {
+      if (kind === 'login') { authError = err.message; render(); }
+      else toast(err.message, 'err');
+    }
+  };
+}
+
+// =========================================================================
+//  BOOT
+// =========================================================================
+(async function boot() {
+  if (state && !state.profile) {
+    try { await loadProfile(); } catch (e) { clearAuth(); }
+  }
+  render();
+})();
+</script>
+</body>
+</html>

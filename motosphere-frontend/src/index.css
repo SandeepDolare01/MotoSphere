@@ -1,0 +1,172 @@
+/* ==========================================================================
+   MotoSphere theme — layered on top of Bootstrap 5, not replacing it.
+   Palette: concrete (bg) / ink (rail, headings) / amber (primary accent) /
+   grease (success) / torque (danger) / steel (secondary text).
+   ========================================================================== */
+
+:root {
+  --ms-concrete: #EEEEE9;
+  --ms-ink: #1B1F1D;
+  --ms-ink-soft: #2A302C;
+  --ms-steel: #5B6560;
+  --ms-panel: #FFFFFF;
+  --ms-amber: #E8A317;
+  --ms-amber-ink: #5A3D06;
+  --ms-torque: #C4432B;
+  --ms-grease: #3C7A5C;
+  --ms-line: #DADCD5;
+
+  /* Re-point Bootstrap's own variables at our palette so every stock
+     component (buttons, alerts, form focus rings) picks it up for free. */
+  --bs-primary: var(--ms-ink);
+  --bs-primary-rgb: 27, 31, 29;
+  --bs-body-bg: var(--ms-concrete);
+  --bs-body-color: var(--ms-ink);
+  --bs-border-color: var(--ms-line);
+  --bs-border-radius: 10px;
+  --bs-border-radius-lg: 14px;
+  --bs-border-radius-sm: 6px;
+  --bs-link-color: var(--ms-ink);
+  --bs-link-hover-color: var(--ms-ink-soft);
+  --bs-success: var(--ms-grease);
+  --bs-success-rgb: 60, 122, 92;
+  --bs-danger: var(--ms-torque);
+  --bs-danger-rgb: 196, 67, 43;
+  --bs-warning: var(--ms-amber);
+  --bs-warning-rgb: 232, 163, 23;
+}
+
+body {
+  font-family: 'Inter', system-ui, sans-serif;
+  background: var(--ms-concrete);
+}
+h1, h2, h3, h4, h5, .navbar-brand {
+  font-family: 'Space Grotesk', sans-serif;
+  letter-spacing: -0.01em;
+}
+.ms-mono { font-family: 'IBM Plex Mono', monospace; }
+.ms-price { font-weight: 600; }
+
+/* ---------- Buttons: amber as the primary "do the thing" action ---------- */
+.btn-amber {
+  background-color: var(--ms-amber);
+  border-color: var(--ms-amber);
+  color: var(--ms-amber-ink);
+  font-weight: 600;
+}
+.btn-amber:hover, .btn-amber:focus {
+  background-color: #d69712;
+  border-color: #d69712;
+  color: var(--ms-amber-ink);
+}
+.btn-dark { font-weight: 600; }
+
+/* ---------- Auth screen ---------- */
+.ms-auth-wrap {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem 1rem;
+}
+.ms-auth-card {
+  width: 100%;
+  max-width: 460px;
+}
+.ms-auth-head {
+  background: var(--ms-ink);
+  color: #fff;
+  border-radius: var(--bs-border-radius-lg) var(--bs-border-radius-lg) 0 0;
+  padding: 1.75rem 1.75rem 1.35rem;
+}
+.ms-auth-head p {
+  color: #B7BEB9;
+  font-size: 0.83rem;
+  line-height: 1.55;
+  margin: 0.5rem 0 0;
+}
+
+/* ---------- App shell ---------- */
+/* Fix the shell to exactly the viewport height so the sidebar (.ms-rail)
+   never scrolls with the page - only .ms-main scrolls internally. */
+.ms-shell { display: flex; height: 100vh; overflow: hidden; }
+.ms-rail {
+  width: 232px;
+  flex-shrink: 0;
+  height: 100vh;
+  overflow-y: auto;
+  background: var(--ms-ink);
+  color: #DEE1DC;
+  display: flex;
+  flex-direction: column;
+  padding: 22px 0;
+}
+.ms-rail-brand {
+  display: flex; align-items: center; gap: 9px;
+  padding: 0 22px 20px; margin-bottom: 12px;
+  border-bottom: 1px solid #33392F;
+  font-family: 'Space Grotesk', sans-serif; font-weight: 700; font-size: 1rem; color: #fff;
+}
+.ms-rail-label {
+  font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.08em;
+  color: #7C857D; padding: 4px 22px; margin-bottom: 4px;
+}
+.ms-rail-link {
+  display: block; padding: 9px 22px; font-size: 0.85rem; font-weight: 500;
+  color: #C3C9C1; border-left: 2px solid transparent; text-decoration: none;
+  transition: 0.12s;
+}
+.ms-rail-link:hover { color: #fff; background: rgba(255,255,255,.04); }
+.ms-rail-link.active { color: #fff; border-left-color: var(--ms-amber); background: rgba(232,163,23,.09); }
+.ms-rail-foot { margin-top: auto; padding: 14px 22px 0; border-top: 1px solid #33392F; }
+.ms-rail-logout { color: #E7A497; font-size: 0.8rem; font-weight: 600; background: none; border: none; padding: 8px 0; }
+
+.ms-main { flex: 1; min-width: 0; height: 100vh; overflow-y: auto; display: flex; flex-direction: column; }
+.ms-topbar {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 14px 32px; border-bottom: 1px solid var(--ms-line); background: var(--ms-panel);
+}
+.ms-role-badge {
+  display: inline-flex; align-items: center; gap: 7px; background: var(--ms-ink); color: #fff;
+  padding: 5px 11px 5px 9px; border-radius: 20px; font-size: 0.68rem; font-weight: 600;
+  letter-spacing: 0.04em; text-transform: uppercase;
+}
+.ms-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--ms-amber); display: inline-block; }
+.ms-content { padding: 28px 32px 60px; max-width: 1140px; }
+
+/* ---------- Cards / empty states ---------- */
+.card { border-color: var(--ms-line); box-shadow: 0 1px 2px rgba(27,31,29,.06), 0 4px 14px rgba(27,31,29,.05); }
+.ms-empty {
+  border: 1px dashed var(--ms-line); border-radius: 10px; padding: 26px 20px; text-align: center;
+  color: var(--ms-steel); font-size: 0.85rem; background: #F7F7F3;
+}
+.ms-empty strong { display: block; color: var(--ms-ink); font-size: 0.95rem; margin-bottom: 4px; font-family: 'Space Grotesk', sans-serif; }
+.ms-empty-body { margin-top: 4px; }
+
+.ms-subcard { border: 1px solid var(--ms-line); border-radius: 9px; padding: 14px 16px; background: #FBFBF9; }
+.ms-kv { display: flex; justify-content: space-between; font-size: 0.85rem; padding: 5px 0; border-bottom: 1px solid #E6E7E1; }
+.ms-kv:last-child { border-bottom: none; }
+.ms-kv .k { color: var(--ms-steel); }
+.ms-kv .v { font-weight: 600; }
+
+/* Section heading pattern used across every page */
+.ms-section-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 1rem; flex-wrap: wrap; margin-bottom: 1.25rem; }
+.ms-section-head p { margin: 4px 0 0; font-size: 0.83rem; color: var(--ms-steel); }
+
+/* ---------- Dashboard stat cards ---------- */
+.ms-stat-card { border: 1px solid var(--ms-line); border-radius: 10px; padding: 18px 20px; background: #fff; }
+.ms-stat-card .label { font-size: 0.72rem; text-transform: uppercase; letter-spacing: .04em; color: var(--ms-steel); font-weight: 600; margin-bottom: 6px; }
+.ms-stat-card .value { font-size: 1.6rem; font-weight: 700; font-family: 'IBM Plex Mono', monospace; }
+
+@media (max-width: 820px) {
+  .ms-shell { flex-direction: column; height: auto; overflow: visible; }
+  .ms-rail { width: 100%; height: auto; overflow: visible; flex-direction: row; flex-wrap: wrap; padding: 12px; align-items: center; }
+  .ms-rail-brand { border: none; margin: 0 12px 0 0; padding: 0; }
+  .ms-rail-label { display: none; }
+  .ms-rail-link { padding: 6px 10px; border-left: none; border-radius: 6px; }
+  .ms-rail-link.active { border-left: none; background: rgba(232,163,23,.14); }
+  .ms-rail-foot { margin: 0 0 0 auto; padding: 0; border: none; }
+  .ms-main { height: auto; overflow: visible; }
+  .ms-content { padding: 20px 16px 50px; }
+  .ms-topbar { padding: 12px 16px; }
+}
