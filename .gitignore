@@ -1,7 +1,6 @@
-metadata
+.metadata
 
-motosphere-backend\src\main\resources\application.properties
+motosphere-backend/src/main/resources/application.properties
+payment-service/src/main/resources/application.properties
 
-payment-service\src\main\resources\application.properties.
-
-motosphere-frontend\node_modules
+motosphere-frontend/node_modules

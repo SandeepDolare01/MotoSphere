@@ -1,5 +1,8 @@
 package com.motosphere.serviceImpl;
 
+import java.time.LocalDate;
+import java.time.LocalTime;
+import java.util.ArrayList;
 import java.util.List;
 
 import org.springframework.stereotype.Service;
@@ -9,6 +12,7 @@ import com.motosphere.dto.request.AppointmentRequest;
 import com.motosphere.dto.request.AssignMechanicRequest;
 import com.motosphere.dto.response.ApiResponse;
 import com.motosphere.dto.response.AppointmentResponse;
+import com.motosphere.dto.response.TimeSlotResponse;
 import com.motosphere.entity.Appointment;
 import com.motosphere.entity.Garage;
 import com.motosphere.entity.User;
@@ -51,6 +55,17 @@ public class AppointmentServiceImpl implements AppointmentService {
 		if (garage.getApprovalStatus() != ApprovalStatus.APPROVED)
 			throw new BadRequestException("Invalid garageId!"); // don't leak that a pending/rejected garage exists
 
+		// Re-validate capacity here even though the frontend only ever shows
+		// already-available slots - two customers could be looking at the same
+		// slot list at once, and this is the actual source of truth at the
+		// moment of booking. Lock the garage row first so a second concurrent
+		// request for the same garage blocks here instead of racing this one -
+		// otherwise both could read "capacity available" before either insert
+		// commits and the slot gets double-booked.
+		garage = garageRepository.findByIdForUpdate(garage.getGarageId()).orElseThrow();
+		if (!hasCapacity(garage, request.getAppointmentDate(), request.getAppointmentTime()))
+			throw new BadRequestException("This slot is no longer available - please pick another one");
+
 		boolean slotTaken = appointmentRepository.existsByVehicle_VehicleIdAndAppointmentDateAndAppointmentTimeAndStatusNot(
 				vehicle.getVehicleId(), request.getAppointmentDate(), request.getAppointmentTime(),
 				AppointmentStatus.CANCELLED);
@@ -64,6 +79,54 @@ public class AppointmentServiceImpl implements AppointmentService {
 		appointmentRepository.save(appointment);
 
 		return new ApiResponse("Appointment booked!", "Success");
+	}
+
+	@Override
+	public List<TimeSlotResponse> getAvailableSlots(Long garageId, LocalDate date) {
+		Garage garage = garageRepository.findById(garageId)
+				.orElseThrow(() -> new ResourceNotFoundException("Invalid garageId!"));
+		if (garage.getApprovalStatus() != ApprovalStatus.APPROVED)
+			throw new BadRequestException("Invalid garageId!");
+
+		// fall back to a sensible default for any garage that hasn't had its
+		// hours configured yet, rather than returning zero slots / erroring
+		LocalTime opening = garage.getOpeningTime() != null ? garage.getOpeningTime() : LocalTime.of(9, 0);
+		LocalTime closing = garage.getClosingTime() != null ? garage.getClosingTime() : LocalTime.of(18, 0);
+
+		boolean isToday = date.equals(LocalDate.now());
+
+		List<TimeSlotResponse> slots = new ArrayList<>();
+		LocalTime slotStart = opening;
+		while (!slotStart.plusMinutes(SLOT_MINUTES).isAfter(closing)) {
+			LocalTime slotEnd = slotStart.plusMinutes(SLOT_MINUTES);
+
+			// don't offer a slot that's already in the past for today
+			boolean isPast = isToday && !slotStart.isAfter(LocalTime.now());
+
+			if (!isPast && hasCapacity(garage, date, slotStart))
+				slots.add(new TimeSlotResponse(slotStart, slotEnd));
+
+			slotStart = slotEnd;
+		}
+		return slots;
+	}
+
+	private static final int SLOT_MINUTES = 30;
+
+	// A slot has capacity as long as fewer active mechanics are already
+	// booked into it than the garage currently has on staff. One appointment
+	// == one mechanic's worth of a slot, since a mechanic is later assigned
+	// 1:1 to a booked appointment (see assignMechanic()).
+	private boolean hasCapacity(Garage garage, LocalDate date, LocalTime time) {
+		long activeMechanics = userRepository.findByGarage_GarageIdAndRole(garage.getGarageId(), Role.MECHANIC)
+				.stream().filter(User::isActive).count();
+		if (activeMechanics == 0)
+			return false;
+
+		long alreadyBooked = appointmentRepository.countByGarage_GarageIdAndAppointmentDateAndAppointmentTimeAndStatusNot(
+				garage.getGarageId(), date, time, AppointmentStatus.CANCELLED);
+
+		return alreadyBooked < activeMechanics;
 	}
 
 	@Override
