@@ -55,11 +55,15 @@ public class AppointmentServiceImpl implements AppointmentService {
 		if (garage.getApprovalStatus() != ApprovalStatus.APPROVED)
 			throw new BadRequestException("Invalid garageId!"); // don't leak that a pending/rejected garage exists
 
-		// Re-validate here even though the frontend only ever shows
+		// Re-validate capacity here even though the frontend only ever shows
 		// already-available slots - two customers could be looking at the same
 		// slot list at once, and this is the actual source of truth at the
-		// moment of booking.
-		if (!isSlotFree(garage, request.getAppointmentDate(), request.getAppointmentTime()))
+		// moment of booking. Lock the garage row first so a second concurrent
+		// request for the same garage blocks here instead of racing this one -
+		// otherwise both could read "capacity available" before either insert
+		// commits and the slot gets double-booked.
+		garage = garageRepository.findByIdForUpdate(garage.getGarageId()).orElseThrow();
+		if (!hasCapacity(garage, request.getAppointmentDate(), request.getAppointmentTime()))
 			throw new BadRequestException("This slot is no longer available - please pick another one");
 
 		boolean slotTaken = appointmentRepository.existsByVehicle_VehicleIdAndAppointmentDateAndAppointmentTimeAndStatusNot(
@@ -99,7 +103,7 @@ public class AppointmentServiceImpl implements AppointmentService {
 			// don't offer a slot that's already in the past for today
 			boolean isPast = isToday && !slotStart.isAfter(LocalTime.now());
 
-			if (!isPast && isSlotFree(garage, date, slotStart))
+			if (!isPast && hasCapacity(garage, date, slotStart))
 				slots.add(new TimeSlotResponse(slotStart, slotEnd));
 
 			slotStart = slotEnd;
@@ -109,14 +113,20 @@ public class AppointmentServiceImpl implements AppointmentService {
 
 	private static final int SLOT_MINUTES = 30;
 
-	// Simple, single-queue model: one 30-min slot = one appointment for the
-	// whole garage, regardless of how many mechanics are on staff. Once a
-	// customer books 9:00-9:30, that window is gone for everyone else and the
-	// next customer's earliest option is 9:30.
-	private boolean isSlotFree(Garage garage, LocalDate date, LocalTime time) {
+	// A slot has capacity as long as fewer active mechanics are already
+	// booked into it than the garage currently has on staff. One appointment
+	// == one mechanic's worth of a slot, since a mechanic is later assigned
+	// 1:1 to a booked appointment (see assignMechanic()).
+	private boolean hasCapacity(Garage garage, LocalDate date, LocalTime time) {
+		long activeMechanics = userRepository.findByGarage_GarageIdAndRole(garage.getGarageId(), Role.MECHANIC)
+				.stream().filter(User::isActive).count();
+		if (activeMechanics == 0)
+			return false;
+
 		long alreadyBooked = appointmentRepository.countByGarage_GarageIdAndAppointmentDateAndAppointmentTimeAndStatusNot(
 				garage.getGarageId(), date, time, AppointmentStatus.CANCELLED);
-		return alreadyBooked == 0;
+
+		return alreadyBooked < activeMechanics;
 	}
 
 	@Override
